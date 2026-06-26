@@ -20,24 +20,27 @@
     .sidebar-header { padding: 14px 16px 8px; font-size: 0.68rem; font-weight: 600; color: #555; letter-spacing: 0.08em; text-transform: uppercase; }
     .sidebar-empty { padding: 16px; font-size: 0.78rem; color: #444; text-align: center; line-height: 1.6; }
 
-    .file-entry { border-bottom: 1px solid #1a1a1a; padding: 12px 14px; }
+    .file-entry { border-bottom: 1px solid #1a1a1a; padding: 12px 14px; transition: background 0.15s; }
+    .file-entry:hover { background: #141414; }
     .file-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .file-icon { width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; }
-    .file-icon.pdf { background: #2a1a1a; color: #f87171; }
-    .file-icon.audio { background: #1a1a2a; color: #818cf8; }
-    .file-icon.image { background: #1a2a1a; color: #4ade80; }
-    .file-icon.text { background: #1e1e1e; color: #aaa; }
+    .file-icon { width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.68rem; font-weight: 700; flex-shrink: 0; letter-spacing: 0.05em; }
+    .file-icon.pdf { background: #2a1a1a; color: #f87171; border: 1px solid #3a2020; }
+    .file-icon.audio { background: #1a1a2a; color: #818cf8; border: 1px solid #20203a; }
+    .file-icon.image { background: #1a2a1a; color: #4ade80; border: 1px solid #203a20; }
+    .file-icon.text { background: #1e1e1e; color: #aaa; border: 1px solid #2a2a2a; }
     .file-meta { flex: 1; min-width: 0; }
     .file-name { font-size: 0.78rem; font-weight: 500; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .file-detail { font-size: 0.68rem; color: #555; margin-top: 2px; }
-    .extracted-preview { background: #0d0d0d; border: 1px solid #1e1e1e; border-radius: 6px; padding: 8px; }
-    .extracted-label { font-size: 0.65rem; color: #555; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
-    .extracted-text { font-size: 0.72rem; color: #666; line-height: 1.5; max-height: 60px; overflow: hidden; }
-    .confidence-badge { display: inline-block; font-size: 0.6rem; padding: 1px 6px; border-radius: 10px; margin-top: 5px; }
-    .conf-high { background: #1a2a1a; color: #4ade80; }
-    .conf-medium { background: #2a2a1a; color: #fbbf24; }
-    .conf-low { background: #2a1a1a; color: #f87171; }
-
+    .extracted-preview { background: #0d0d0d; border: 1px solid #1e1e1e; border-radius: 6px; padding: 8px 10px; }
+    .extracted-label { font-size: 0.62rem; color: #444; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; }
+    .extracted-text { font-size: 0.71rem; color: #555; line-height: 1.6; max-height: 72px; overflow: hidden; position: relative; }
+    .extracted-text::after { content: ""; position: absolute; bottom: 0; left: 0; right: 0; height: 20px; background: linear-gradient(transparent, #0d0d0d); }
+    .confidence-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.6rem; padding: 2px 7px; border-radius: 10px; margin-top: 6px; font-weight: 600; }
+    .conf-high { background: #0d1f0d; color: #4ade80; border: 1px solid #1a3a1a; }
+    .conf-medium { background: #1f1f0d; color: #fbbf24; border: 1px solid #3a3a1a; }
+    .conf-low { background: #1f0d0d; color: #f87171; border: 1px solid #3a1a1a; }
+    .processing-badge { display: inline-flex; align-items: center; gap: 4px; font-size: 0.6rem; padding: 2px 7px; border-radius: 10px; margin-top: 6px; background: #1a1a0d; color: #fbbf24; border: 1px solid #3a3a1a; }
+    
     /* chat area */
     .chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
@@ -169,32 +172,34 @@
   }
 
   function previewFilesInSidebar(files) {
-      const sidebar = document.getElementById("sidebar");
-      const empty = document.getElementById("sidebar-empty");
-      if (empty) empty.remove();
+    const sidebar = document.getElementById("sidebar");
+    const empty = document.getElementById("sidebar-empty");
+    if (empty) empty.remove();
 
-      files.forEach(file => {
-          const type = getFileType(file.name);
-          const label = getFileLabel(type);
+    files.forEach(file => {
+        const type = getFileType(file.name);
+        const label = getFileLabel(type);
+        const sizeMB = (file.size / 1024 / 1024).toFixed(2);
 
-          const entry = document.createElement("div");
-          entry.className = "file-entry";
-          entry.id = `sidebar-file-${file.name}`;
-          entry.innerHTML = `
-              <div class="file-top">
-                  <div class="file-icon ${type}">${label}</div>
-                  <div class="file-meta">
-                      <div class="file-name">${file.name}</div>
-                      <div class="file-detail">Processing...</div>
-                  </div>
-              </div>
-              <div class="extracted-preview">
-                  <div class="extracted-label">Extracted text</div>
-                  <div class="extracted-text" id="extracted-${file.name}">Waiting for agent response...</div>
-              </div>
-          `;
-          sidebar.appendChild(entry);
-      });
+        const entry = document.createElement("div");
+        entry.className = "file-entry";
+        entry.id = `sidebar-file-${file.name}`;
+        entry.innerHTML = `
+            <div class="file-top">
+                <div class="file-icon ${type}">${label}</div>
+                <div class="file-meta">
+                    <div class="file-name">${file.name}</div>
+                    <div class="file-detail">${sizeMB} MB</div>
+                </div>
+            </div>
+            <div class="extracted-preview">
+                <div class="extracted-label">Extracted text</div>
+                <div class="extracted-text" id="extracted-${file.name}">Send a message to extract content...</div>
+                <span class="processing-badge">Pending</span>
+            </div>
+        `;
+        sidebar.appendChild(entry);
+    });
   }
 
   function renderFilePreviews() {
@@ -298,6 +303,15 @@
     return `<div class="trace-box"><div class="trace-title">Agent trace</div>${steps}</div>`;
   }
 
+  if (data.processing_errors && data.processing_errors.length > 0) {
+    agentHtml += `<div class="result-section">
+        <div class="result-header">Processing warnings</div>
+        <div class="result-body">
+            ${data.processing_errors.map(e => `<div class="prose" style="color:#f87171">${e}</div>`).join('')}
+        </div>
+    </div>`;
+  }
+  
   function renderResult(result) {
     if (!result) return '';
     let html = '';
