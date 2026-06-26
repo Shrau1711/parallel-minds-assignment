@@ -28,21 +28,33 @@ def determine_intent(combined_text: str, user_query: str) -> dict:
     
     prompt = f"""
     You are an intent detection system for an agentic AI app.
-    
+
     The user has provided the following extracted content:
     ---
     {combined_text[:3000]}
     ---
-    
+
     The user's query is: "{user_query}"
-    
+
     Based on the content and query, decide:
     1. Is there enough information to act? (yes/no)
     2. If no, what follow-up question should be asked?
     3. If yes, what is the ordered list of tools to run?
-    
-    Available tools: summarize, sentiment, code_explain, youtube_transcript, conversational, cross_input_reasoning
-    
+
+    Available tools and when to use them:
+    - summarize: ONLY when user explicitly asks to summarize, give a summary, or give an overview. NOT for specific questions about content.
+    - sentiment: ONLY when user asks about sentiment, tone, emotion, or opinion in text.
+    - code_explain: ONLY when user asks to explain, debug, or analyze code.
+    - youtube_transcript: ONLY when a YouTube URL is present AND user wants to know about the video content.
+    - conversational: for greetings, general questions, capability questions, AND for specific content questions like "what are the action items", "what does this say about X", "answer this question based on the document". This tool answers directly without forcing a summary format.
+    - cross_input_reasoning: ONLY when multiple files are uploaded and user wants to compare or combine them.
+
+    Important rules:
+    - If user uploads a PDF and asks a specific question about it, use conversational not summarize.
+    - If user asks "what is X in this document", use conversational.
+    - Only use summarize when the word "summarize", "summary", "overview", or "brief" appears in the query.
+    - Never use summarize as a fallback for everything.
+
     Respond in exactly this format:
     CLEAR: <yes or no>
     FOLLOWUP: <follow up question if CLEAR is no, else 'none'>
@@ -149,23 +161,29 @@ def run_agent(extracted_inputs: dict, user_query: str) -> dict:
                     final_result["youtube_error"] = yt_result.get("error", "Failed to fetch transcript")
                     trace.append(f"YouTube fetch failed: {final_result['youtube_error']}")
         
+        
         elif tool == "conversational":
             try:
                 trace.append("[RUNNING] Generating conversational response")
                 convo_prompt = f"""You are an intelligent agentic assistant built with FastAPI and Gemini.
-                You can process text, PDFs, images, and audio files. You can summarize, analyze sentiment, explain code, fetch YouTube transcripts, and reason across multiple inputs.
+        You can process text, PDFs, images, and audio files.
 
-                The user asked: {user_query}
-                Context: {combined_text[:2000]}
+        The user asked: {user_query}
 
-                Respond helpfully and concisely. Do not use markdown formatting or asterisks. Use plain sentences only."""
+        Content extracted from uploaded files:
+        {combined_text[:3000]}
+
+        Answer the user's question directly and specifically based on the content above.
+        If the content is relevant, use it to give a precise answer.
+        If no files were uploaded, answer from your general knowledge.
+        Do not use markdown formatting or asterisks. Use plain sentences only."""
                 response = client.models.generate_content(model=GEMINI_MODEL, contents=convo_prompt)
                 final_result["answer"] = response.text.strip()
                 trace.append("[DONE] Response generated")
             except Exception as e:
                 trace.append(f"[ERROR] Conversational response failed: {str(e)}")
                 final_result["answer"] = "Sorry, I could not generate a response right now."
-        
+
         elif tool == "cross_input_reasoning":
             try:
                 trace.append("[RUNNING] Cross-input reasoning")
