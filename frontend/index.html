@@ -164,7 +164,37 @@
     const newFiles = Array.from(event.target.files);
     selectedFiles = [...selectedFiles, ...newFiles];
     renderFilePreviews();
+    previewFilesInSidebar(newFiles);
     event.target.value = "";
+  }
+
+  function previewFilesInSidebar(files) {
+      const sidebar = document.getElementById("sidebar");
+      const empty = document.getElementById("sidebar-empty");
+      if (empty) empty.remove();
+
+      files.forEach(file => {
+          const type = getFileType(file.name);
+          const label = getFileLabel(type);
+
+          const entry = document.createElement("div");
+          entry.className = "file-entry";
+          entry.id = `sidebar-file-${file.name}`;
+          entry.innerHTML = `
+              <div class="file-top">
+                  <div class="file-icon ${type}">${label}</div>
+                  <div class="file-meta">
+                      <div class="file-name">${file.name}</div>
+                      <div class="file-detail">Processing...</div>
+                  </div>
+              </div>
+              <div class="extracted-preview">
+                  <div class="extracted-label">Extracted text</div>
+                  <div class="extracted-text" id="extracted-${file.name}">Waiting for agent response...</div>
+              </div>
+          `;
+          sidebar.appendChild(entry);
+      });
   }
 
   function renderFilePreviews() {
@@ -206,35 +236,45 @@
     if (empty) empty.remove();
 
     for (const [key, data] of Object.entries(extractedData)) {
-      const type = getFileType(key);
-      const label = getFileLabel(type);
-      const confClass = data.confidence === 'high' ? 'conf-high' : data.confidence === 'medium' ? 'conf-medium' : 'conf-low';
+        const cleanName = key.replace(/^(pdf_|image_|audio_)/, '');
+        const type = getFileType(cleanName);
+        const label = getFileLabel(type);
+        const confClass = data.confidence === 'high' ? 'conf-high' : data.confidence === 'medium' ? 'conf-medium' : 'conf-low';
 
-      const extra = data.extra || {};
-      let extraInfo = "";
-      if (extra.duration) extraInfo = extra.duration;
-      else if (extra.pages) extraInfo = `${extra.pages} pages`;
-      else if (extra.language) extraInfo = extra.language;
+        const extra = data.extra || {};
+        let extraInfo = "";
+        if (extra.duration) extraInfo = extra.duration;
+        else if (extra.pages) extraInfo = `${extra.pages} pages`;
+        else if (extra.language) extraInfo = extra.language;
 
-      const entry = document.createElement("div");
-      entry.className = "file-entry";
-      entry.innerHTML = `
-        <div class="file-top">
-          <div class="file-icon ${type}">${label}</div>
-          <div class="file-meta">
-            <div class="file-name">${key.replace(/^(pdf_|image_|audio_)/, '')}</div>
-            <div class="file-detail">${extraInfo || type}</div>
-          </div>
-        </div>
-        <div class="extracted-preview">
-          <div class="extracted-label">Extracted text</div>
-          <div class="extracted-text">${data.text || 'No text extracted'}</div>
-          <span class="confidence-badge ${confClass}">Confidence: ${data.confidence}</span>
-        </div>
-      `;
-      sidebar.appendChild(entry);
+        // check if entry already exists and update it
+        let entry = document.getElementById(`sidebar-file-${cleanName}`);
+        if (entry) {
+            entry.querySelector('.file-detail').textContent = extraInfo || type;
+            entry.querySelector('.extracted-text').textContent = data.text || 'No text extracted';
+            entry.innerHTML += `<span class="confidence-badge ${confClass}">Confidence: ${data.confidence}</span>`;
+        } else {
+            // create new entry if not already there
+            entry = document.createElement("div");
+            entry.className = "file-entry";
+            entry.innerHTML = `
+                <div class="file-top">
+                    <div class="file-icon ${type}">${label}</div>
+                    <div class="file-meta">
+                        <div class="file-name">${cleanName}</div>
+                        <div class="file-detail">${extraInfo || type}</div>
+                    </div>
+                </div>
+                <div class="extracted-preview">
+                    <div class="extracted-label">Extracted text</div>
+                    <div class="extracted-text">${data.text || 'No text extracted'}</div>
+                    <span class="confidence-badge ${confClass}">Confidence: ${data.confidence}</span>
+                </div>
+            `;
+            sidebar.appendChild(entry);
+        }
     }
-  }
+}
 
   function getTraceTag(step) {
     if (step.startsWith('[COST]')) return ['tag-cost', 'COST'];
