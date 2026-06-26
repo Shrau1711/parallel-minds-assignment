@@ -4,7 +4,6 @@ python-multipart
 pdfplumber
 pytesseract
 Pillow
-openai-whisper
 youtube-transcript-api
 python-dotenv
 tiktoken

@@ -1,30 +1,30 @@
-import whisper
 import tempfile
 import os
+from config import GEMINI_API_KEY, GEMINI_MODEL
+from google import genai
+from google.genai import types
 
-model = whisper.load_model("small")
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 def transcribe_audio(file_bytes: bytes, filename: str) -> dict:
-    """Transcribe audio file to text using OpenAI Whisper locally."""
+    """Transcribe audio using Gemini's native audio understanding."""
     try:
-
         suffix = os.path.splitext(filename)[-1] or ".mp3"
+        mime = "audio/mpeg" if suffix in [".mp3"] else "audio/wav"
 
-        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-            tmp.write(file_bytes)
-            tmp_path = tmp.name
-
-        result = model.transcribe(tmp_path)
-        os.unlink(tmp_path)
-
-        duration_seconds = result.get("duration", 0)
-        minutes = int(duration_seconds // 60)
-        seconds = int(duration_seconds % 60)
+        response = client.models.generate_content(
+            model=GEMINI_MODEL,
+            contents=[
+                types.Part.from_bytes(data=file_bytes, mime_type=mime),
+                "Transcribe this audio file completely and accurately. Return only the transcript text, nothing else."
+            ]
+        )
 
         return {
-            "text": result["text"].strip(),
-            "language": result.get("language", "unknown"),
-            "duration": f"{minutes}m {seconds}s"
+            "text": response.text.strip(),
+            "language": "auto-detected",
+            "duration": "unknown"
         }
+
     except Exception as e:
-        return {"text": "", "language": "unknown", "duration": "0m 0s", "error": str(e)}
+        return {"text": "", "language": "unknown", "duration": "unknown", "error": str(e)}
