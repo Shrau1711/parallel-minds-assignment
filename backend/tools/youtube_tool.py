@@ -4,7 +4,6 @@ import re
 def fetch_youtube_transcript(url: str) -> dict:
     """Extract transcript from a YouTube URL."""
     
-    # extract video id from various youtube url formats
     patterns = [
         r"(?:v=|\/)([0-9A-Za-z_-]{11})",
         r"youtu\.be\/([0-9A-Za-z_-]{11})"
@@ -21,15 +20,15 @@ def fetch_youtube_transcript(url: str) -> dict:
         return {"text": "", "error": "Could not extract video ID from URL"}
     
     try:
-        transcript_list = YouTubeTranscriptApi.get_transcript(video_id)
-        full_text = " ".join([entry["text"] for entry in transcript_list])
-        duration_seconds = transcript_list[-1]["start"] if transcript_list else 0
-        minutes = int(duration_seconds // 60)
+        # new API syntax
+        ytt_api = YouTubeTranscriptApi()
+        transcript_list = ytt_api.fetch(video_id)
+        full_text = " ".join([entry.text for entry in transcript_list])
         
         return {
             "text": full_text,
             "video_id": video_id,
-            "duration": f"~{minutes} mins"
+            "duration": "unknown"
         }
     except Exception as e:
         return {"text": "", "error": f"Could not fetch transcript: {str(e)}"}
