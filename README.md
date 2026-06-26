@@ -18,49 +18,7 @@ understands user intent, and autonomously chains the correct tools to complete c
 
 ## Architecture
 
-User Input (Text + Files)
-
-↓
-
-FastAPI Backend (main.py)
-
-↓
-
-Input Processors
-
-├── pdf_processor.py   → pdfplumber
-
-├── image_processor.py → pytesseract
-
-└── audio_processor.py → Gemini audio
-
-↓
-
-Agent Core (agent.py)
-
-├── Cost estimation (tiktoken)
-
-├── YouTube URL detection
-
-├── Intent detection (Gemini)
-
-└── Tool orchestration
-
-↓
-
-Tool Registry
-
-├── summarizer.py
-
-├── sentiment.py
-
-├── code_explainer.py
-
-└── youtube_tool.py
-
-↓
-
-Response + Plan Trace → Frontend
+![Architecture Diagram](architecture.png)
 
 ## Setup
 
