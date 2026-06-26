@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+python-multipart
+pdfplumber
+pytesseract
+Pillow
+openai-whisper
+youtube-transcript-api
+python-dotenv
+tiktoken
+google-genai
+numpy
