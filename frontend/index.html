@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Parallel Minds Agent</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #e0e0e0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+    header { background: #111; border-bottom: 1px solid #222; padding: 12px 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+    header h1 { font-size: 1rem; font-weight: 600; color: #c8caff; }
+    header span { font-size: 0.72rem; color: #666; }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #4caf50; margin-left: auto; }
+
+    .body { display: flex; flex: 1; overflow: hidden; }
+
+    /* sidebar */
+    .sidebar { width: 240px; background: #111; border-right: 1px solid #1e1e1e; display: flex; flex-direction: column; flex-shrink: 0; overflow-y: auto; }
+    .sidebar-header { padding: 14px 16px 8px; font-size: 0.68rem; font-weight: 600; color: #555; letter-spacing: 0.08em; text-transform: uppercase; }
+    .sidebar-empty { padding: 16px; font-size: 0.78rem; color: #444; text-align: center; line-height: 1.6; }
+
+    .file-entry { border-bottom: 1px solid #1a1a1a; padding: 12px 14px; }
+    .file-top { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .file-icon { width: 30px; height: 30px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.7rem; font-weight: 700; flex-shrink: 0; }
+    .file-icon.pdf { background: #2a1a1a; color: #f87171; }
+    .file-icon.audio { background: #1a1a2a; color: #818cf8; }
+    .file-icon.image { background: #1a2a1a; color: #4ade80; }
+    .file-icon.text { background: #1e1e1e; color: #aaa; }
+    .file-meta { flex: 1; min-width: 0; }
+    .file-name { font-size: 0.78rem; font-weight: 500; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-detail { font-size: 0.68rem; color: #555; margin-top: 2px; }
+    .extracted-preview { background: #0d0d0d; border: 1px solid #1e1e1e; border-radius: 6px; padding: 8px; }
+    .extracted-label { font-size: 0.65rem; color: #555; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+    .extracted-text { font-size: 0.72rem; color: #666; line-height: 1.5; max-height: 60px; overflow: hidden; }
+    .confidence-badge { display: inline-block; font-size: 0.6rem; padding: 1px 6px; border-radius: 10px; margin-top: 5px; }
+    .conf-high { background: #1a2a1a; color: #4ade80; }
+    .conf-medium { background: #2a2a1a; color: #fbbf24; }
+    .conf-low { background: #2a1a1a; color: #f87171; }
+
+    /* chat area */
+    .chat-area { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .chat-messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+    .msg-user { align-self: flex-end; max-width: 72%; background: #1a1a3a; border: 1px solid #2a2a5a; border-radius: 12px 12px 4px 12px; padding: 10px 14px; font-size: 0.85rem; color: #c8caff; line-height: 1.5; }
+    .msg-user .file-tags { margin-top: 6px; display: flex; flex-wrap: wrap; gap: 4px; }
+    .file-tag { font-size: 0.68rem; background: #111; border: 1px solid #2a2a4a; border-radius: 10px; padding: 2px 8px; color: #888; }
+
+    .msg-agent { align-self: flex-start; max-width: 90%; display: flex; flex-direction: column; gap: 8px; }
+
+    .cost-pill { display: inline-flex; align-items: center; gap: 6px; background: #0d1a0d; border: 1px solid #1a3a1a; color: #4caf50; font-size: 0.72rem; padding: 4px 10px; border-radius: 20px; width: fit-content; }
+
+    .trace-box { background: #111; border: 1px solid #1e1e1e; border-radius: 8px; overflow: hidden; }
+    .trace-title { padding: 8px 12px; font-size: 0.72rem; font-weight: 600; color: #555; background: #0d0d0d; border-bottom: 1px solid #1a1a1a; letter-spacing: 0.05em; text-transform: uppercase; }
+    .trace-step { padding: 6px 12px; font-size: 0.75rem; color: #777; border-bottom: 1px solid #161616; display: flex; align-items: flex-start; gap: 8px; line-height: 1.4; }
+    .trace-step:last-child { border-bottom: none; }
+    .trace-tag { font-size: 0.65rem; font-weight: 700; padding: 1px 6px; border-radius: 4px; flex-shrink: 0; margin-top: 1px; }
+    .tag-cost { background: #0d1a0d; color: #4caf50; }
+    .tag-thinking { background: #1a1030; color: #818cf8; }
+    .tag-plan { background: #1a1a30; color: #6366f1; }
+    .tag-tools { background: #1a1530; color: #a78bfa; }
+    .tag-running { background: #1a1a0d; color: #fbbf24; }
+    .tag-done { background: #0d1a0d; color: #4ade80; }
+    .tag-detected { background: #1a1a0d; color: #fb923c; }
+    .tag-error { background: #1a0d0d; color: #f87171; }
+    .tag-default { background: #1a1a1a; color: #888; }
+
+    .result-section { background: #111; border: 1px solid #1e1e1e; border-radius: 8px; overflow: hidden; }
+    .result-header { padding: 8px 12px; font-size: 0.68rem; font-weight: 700; color: #555; background: #0d0d0d; border-bottom: 1px solid #1a1a1a; letter-spacing: 0.08em; text-transform: uppercase; }
+    .result-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+    .one-line { font-size: 0.88rem; font-weight: 500; color: #e0e0e0; line-height: 1.5; }
+    .bullets { display: flex; flex-direction: column; gap: 5px; }
+    .bullet-item { font-size: 0.82rem; color: #aaa; line-height: 1.5; display: flex; gap: 8px; }
+    .bullet-item::before { content: "—"; color: #444; flex-shrink: 0; }
+    .detailed { font-size: 0.82rem; color: #888; line-height: 1.7; border-top: 1px solid #1a1a1a; padding-top: 10px; }
+    .sentiment-row { display: flex; align-items: center; gap: 10px; }
+    .sentiment-label { font-size: 0.88rem; font-weight: 600; }
+    .sentiment-conf { font-size: 0.78rem; color: #666; }
+    .sentiment-just { font-size: 0.78rem; color: #777; line-height: 1.5; }
+    .code-row { display: flex; flex-direction: column; gap: 6px; }
+    .code-field { font-size: 0.78rem; color: #aaa; line-height: 1.5; }
+    .code-field strong { color: #777; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 2px; }
+    .prose { font-size: 0.85rem; color: #aaa; line-height: 1.7; }
+
+    .followup-box { background: #1a1500; border: 1px solid #3a3000; border-radius: 8px; padding: 12px 14px; color: #fbbf24; font-size: 0.85rem; line-height: 1.5; }
+
+    /* input area */
+    .input-area { padding: 14px 20px; background: #111; border-top: 1px solid #1e1e1e; flex-shrink: 0; }
+    .file-preview-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .preview-chip { background: #1a1a1a; border: 1px solid #2a2a2a; border-radius: 16px; padding: 4px 10px; font-size: 0.72rem; color: #999; display: flex; align-items: center; gap: 6px; }
+    .preview-chip button { background: none; border: none; color: #555; cursor: pointer; font-size: 0.85rem; line-height: 1; padding: 0; }
+    .input-row { display: flex; gap: 8px; align-items: flex-end; }
+    textarea { flex: 1; background: #161616; border: 1px solid #2a2a2a; border-radius: 8px; color: #e0e0e0; padding: 10px 14px; font-size: 0.85rem; resize: none; height: 48px; font-family: inherit; outline: none; transition: border 0.15s; line-height: 1.5; }
+    textarea:focus { border-color: #4a4a8a; }
+    .btn-upload { background: #161616; border: 1px solid #2a2a2a; color: #777; border-radius: 8px; padding: 0 14px; height: 48px; cursor: pointer; font-size: 0.82rem; transition: background 0.15s; white-space: nowrap; }
+    .btn-upload:hover { background: #1e1e1e; }
+    .btn-send { background: #3a3a8a; border: none; color: #c8caff; border-radius: 8px; padding: 0 20px; height: 48px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: background 0.15s; white-space: nowrap; }
+    .btn-send:hover { background: #4a4a9a; }
+    .btn-send:disabled { background: #222; color: #555; cursor: not-allowed; }
+
+    #file-input { display: none; }
+
+    .typing-indicator { display: flex; align-items: center; gap: 6px; padding: 10px 14px; background: #111; border: 1px solid #1e1e1e; border-radius: 8px; width: fit-content; }
+    .typing-dot { width: 5px; height: 5px; border-radius: 50%; background: #555; animation: pulse 1.2s infinite; }
+    .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse { 0%, 80%, 100% { opacity: 0.3; } 40% { opacity: 1; } }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Parallel Minds Agent</h1>
+    <span>Multimodal Agentic AI — Text · PDF · Image · Audio</span>
+  </div>
+  <div class="status-dot" title="Backend connected"></div>
+</header>
+
+<div class="body">
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">Uploaded files</div>
+    <div class="sidebar-empty" id="sidebar-empty">No files uploaded yet.<br/>Upload a PDF, image, or audio file to get started.</div>
+  </div>
+
+  <div class="chat-area">
+    <div class="chat-messages" id="chat"></div>
+    <div class="input-area">
+      <div class="file-preview-row" id="file-preview"></div>
+      <div class="input-row">
+        <button class="btn-upload" onclick="document.getElementById('file-input').click()">+ Attach file</button>
+        <input type="file" id="file-input" multiple accept=".pdf,.jpg,.jpeg,.png,.mp3,.wav,.m4a" onchange="handleFiles(event)"/>
+        <textarea id="query-input" placeholder="Ask anything, or upload a file and describe what you want..." onkeydown="handleKey(event)"></textarea>
+        <button class="btn-send" id="send-btn" onclick="sendMessage()">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let selectedFiles = [];
+  let sidebarFiles = [];
+
+  function getFileType(filename) {
+    const ext = filename.split('.').pop().toLowerCase();
+    if (['pdf'].includes(ext)) return 'pdf';
+    if (['jpg','jpeg','png','webp'].includes(ext)) return 'image';
+    if (['mp3','wav','m4a'].includes(ext)) return 'audio';
+    return 'text';
+  }
+
+  function getFileLabel(type) {
+    if (type === 'pdf') return 'PDF';
+    if (type === 'image') return 'IMG';
+    if (type === 'audio') return 'AUD';
+    return 'TXT';
+  }
+
+  function handleFiles(event) {
+    const newFiles = Array.from(event.target.files);
+    selectedFiles = [...selectedFiles, ...newFiles];
+    renderFilePreviews();
+    event.target.value = "";
+  }
+
+  function renderFilePreviews() {
+    const preview = document.getElementById("file-preview");
+    preview.innerHTML = "";
+    selectedFiles.forEach((file, index) => {
+      const chip = document.createElement("div");
+      chip.className = "preview-chip";
+      chip.innerHTML = `${file.name} <button onclick="removeFile(${index})">x</button>`;
+      preview.appendChild(chip);
+    });
+  }
+
+  function removeFile(index) {
+    selectedFiles.splice(index, 1);
+    renderFilePreviews();
+  }
+
+  function handleKey(e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }
+
+  function appendMessage(role, html) {
+    const chat = document.getElementById("chat");
+    const div = document.createElement("div");
+    div.className = `msg-${role}`;
+    div.innerHTML = html;
+    chat.appendChild(div);
+    chat.scrollTop = chat.scrollHeight;
+    return div;
+  }
+
+  function updateSidebar(extractedData) {
+    const sidebar = document.getElementById("sidebar");
+    const empty = document.getElementById("sidebar-empty");
+    if (empty) empty.remove();
+
+    for (const [key, data] of Object.entries(extractedData)) {
+      const type = getFileType(key);
+      const label = getFileLabel(type);
+      const confClass = data.confidence === 'high' ? 'conf-high' : data.confidence === 'medium' ? 'conf-medium' : 'conf-low';
+
+      const extra = data.extra || {};
+      let extraInfo = "";
+      if (extra.duration) extraInfo = extra.duration;
+      else if (extra.pages) extraInfo = `${extra.pages} pages`;
+      else if (extra.language) extraInfo = extra.language;
+
+      const entry = document.createElement("div");
+      entry.className = "file-entry";
+      entry.innerHTML = `
+        <div class="file-top">
+          <div class="file-icon ${type}">${label}</div>
+          <div class="file-meta">
+            <div class="file-name">${key.replace(/^(pdf_|image_|audio_)/, '')}</div>
+            <div class="file-detail">${extraInfo || type}</div>
+          </div>
+        </div>
+        <div class="extracted-preview">
+          <div class="extracted-label">Extracted text</div>
+          <div class="extracted-text">${data.text || 'No text extracted'}</div>
+          <span class="confidence-badge ${confClass}">Confidence: ${data.confidence}</span>
+        </div>
+      `;
+      sidebar.appendChild(entry);
+    }
+  }
+
+  function getTraceTag(step) {
+    if (step.startsWith('[COST]')) return ['tag-cost', 'COST'];
+    if (step.startsWith('[THINKING]')) return ['tag-thinking', 'THINKING'];
+    if (step.startsWith('[PLAN]')) return ['tag-plan', 'PLAN'];
+    if (step.startsWith('[TOOLS]')) return ['tag-tools', 'TOOLS'];
+    if (step.startsWith('[RUNNING]')) return ['tag-running', 'RUNNING'];
+    if (step.startsWith('[DONE]')) return ['tag-done', 'DONE'];
+    if (step.startsWith('[DETECTED]')) return ['tag-detected', 'DETECTED'];
+    if (step.startsWith('[ERROR]') || step.includes('failed') || step.includes('crashed')) return ['tag-error', 'ERROR'];
+    return ['tag-default', 'INFO'];
+  }
+
+  function renderTraceBox(trace) {
+    if (!trace || trace.length === 0) return '';
+    const steps = trace.map(step => {
+      const [cls, label] = getTraceTag(step);
+      const text = step.replace(/^\[[A-Z]+\]\s*/, '');
+      return `<div class="trace-step"><span class="trace-tag ${cls}">${label}</span>${text}</div>`;
+    }).join('');
+    return `<div class="trace-box"><div class="trace-title">Agent trace</div>${steps}</div>`;
+  }
+
+  function renderResult(result) {
+    if (!result) return '';
+    let html = '';
+
+    if (result.summary) {
+      const s = result.summary;
+      html += `<div class="result-section">
+        <div class="result-header">Summary</div>
+        <div class="result-body">
+          <div class="one-line">${s.one_line}</div>
+          <div class="bullets">${(s.bullets || []).map(b => `<div class="bullet-item">${b}</div>`).join('')}</div>
+          <div class="detailed">${s.detailed}</div>
+        </div>
+      </div>`;
+    }
+
+    if (result.sentiment) {
+      const s = result.sentiment;
+      const color = s.label === 'Positive' ? '#4ade80' : s.label === 'Negative' ? '#f87171' : '#fbbf24';
+      html += `<div class="result-section">
+        <div class="result-header">Sentiment</div>
+        <div class="result-body">
+          <div class="sentiment-row">
+            <span class="sentiment-label" style="color:${color}">${s.label}</span>
+            <span class="sentiment-conf">${s.confidence}</span>
+          </div>
+          <div class="sentiment-just">${s.justification}</div>
+        </div>
+      </div>`;
+    }
+
+    if (result.code_explanation) {
+      const c = result.code_explanation;
+      html += `<div class="result-section">
+        <div class="result-header">Code analysis</div>
+        <div class="result-body">
+          <div class="code-row">
+            <div class="code-field"><strong>Language</strong>${c.language}</div>
+            <div class="code-field"><strong>Explanation</strong>${c.explanation}</div>
+            <div class="code-field"><strong>Bugs</strong>${c.bugs}</div>
+            <div class="code-field"><strong>Time complexity</strong>${c.time_complexity}</div>
+          </div>
+        </div>
+      </div>`;
+    }
+
+    if (result.youtube_summary) {
+      const s = result.youtube_summary;
+      html += `<div class="result-section">
+        <div class="result-header">YouTube summary ${result.youtube_duration ? '· ' + result.youtube_duration : ''}</div>
+        <div class="result-body">
+          <div class="one-line">${s.one_line}</div>
+          <div class="bullets">${(s.bullets || []).map(b => `<div class="bullet-item">${b}</div>`).join('')}</div>
+          <div class="detailed">${s.detailed}</div>
+        </div>
+      </div>`;
+    }
+
+    if (result.answer) {
+      html += `<div class="result-section">
+        <div class="result-header">Answer</div>
+        <div class="result-body"><div class="prose">${result.answer}</div></div>
+      </div>`;
+    }
+
+    if (result.cross_input_analysis) {
+      html += `<div class="result-section">
+        <div class="result-header">Cross-input analysis</div>
+        <div class="result-body"><div class="prose">${result.cross_input_analysis}</div></div>
+      </div>`;
+    }
+
+    return html;
+  }
+
+  async function sendMessage() {
+    const queryInput = document.getElementById("query-input");
+    const sendBtn = document.getElementById("send-btn");
+    const query = queryInput.value.trim();
+
+    if (!query && selectedFiles.length === 0) return;
+
+    let userHtml = query ? `<div>${query}</div>` : '';
+    if (selectedFiles.length > 0) {
+      userHtml += `<div class="file-tags">${selectedFiles.map(f => `<span class="file-tag">${f.name}</span>`).join('')}</div>`;
+    }
+    appendMessage("user", userHtml);
+
+    queryInput.value = "";
+    sendBtn.disabled = true;
+
+    const loadingDiv = document.createElement("div");
+    loadingDiv.className = "msg-agent";
+    loadingDiv.innerHTML = `<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+    document.getElementById("chat").appendChild(loadingDiv);
+    document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
+
+    const formData = new FormData();
+    formData.append("query", query);
+    selectedFiles.forEach(file => formData.append("files", file));
+    selectedFiles = [];
+    renderFilePreviews();
+
+    try {
+      const res = await fetch("/agent", { method: "POST", body: formData });
+      const data = await res.json();
+      loadingDiv.remove();
+
+      if (data.extracted && Object.keys(data.extracted).length > 0) {
+        updateSidebar(data.extracted);
+      }
+
+      let agentHtml = '';
+
+      if (data.cost) {
+        agentHtml += `<div class="cost-pill">~${data.cost.estimated_tokens} tokens &nbsp;·&nbsp; ~$${data.cost.estimated_cost_usd} USD</div>`;
+      }
+
+      if (data.followup) {
+        agentHtml += `<div class="followup-box">${data.followup}</div>`;
+      }
+
+      agentHtml += renderTraceBox(data.trace);
+      agentHtml += renderResult(data.result);
+
+      appendMessage("agent", agentHtml);
+
+    } catch (err) {
+      loadingDiv.remove();
+      appendMessage("agent", `<div class="result-section"><div class="result-body"><div class="prose">Something went wrong. Check that the backend is running.</div></div></div>`);
+    }
+
+    sendBtn.disabled = false;
+  }
+</script>
+</body>
+</html>
